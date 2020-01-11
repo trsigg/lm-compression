@@ -2,10 +2,8 @@ import util
 
 
 class rANSEncoder:
-    def __init__(self, text_buffer, model, output_path,
-                 precision=14, state_bytes=4, bytes_per_write=1):
-        self.buffer = text_buffer
-        self.model = model
+    def __init__(self, output_path, precision=14, state_bytes=4,
+                 bytes_per_write=1):
         self.output_path = output_path
 
         self.precision = precision
@@ -15,11 +13,19 @@ class rANSEncoder:
         self.bytes_per_write = bytes_per_write
 
         self.out = None
+        self.position_table = []
 
     def open(self):
         self.out = open(self.output_path, 'wb')
 
     def close(self):
+        # write pos table
+        pos_table_start = self.out.seek() + 1
+        util.write_expanding_num(len(self.position_table), self.out, True)
+        for pos in self.position_table:
+            util.write_expanding_num(pos, self.out, True)
+        util.write_expanding_num(pos_table_start, self.out, False)
+
         self.out.close()
         self.out = None
 
@@ -41,8 +47,7 @@ class rANSEncoder:
         if self.out is None:
             raise ValueError('encoder is not in write mode')
 
-        x = 1
-        bytes_written = 0
+        x = self.L
         for i in range(num_symbols):
             fs, cs = probabilities[i]
 
@@ -52,11 +57,10 @@ class rANSEncoder:
                 low_bytes = x & ((1 << self.bits_per_write) - 1)
                 self.out.write(low_bytes.to_bytes(self.bytes_per_write, byteorder='big'))
                 x >>= self.bits_per_write
-                bytes_written += 1
 
             # encode
             x = ((x / fs) << self.precision) + (x % fs) + cs
 
         self.out.write(x.to_bytes(self.state_bytes, byteorder='big'))
 
-        util.write_expanding_num(bytes_written, self.out)
+        self.position_table.append(self.out.seek())

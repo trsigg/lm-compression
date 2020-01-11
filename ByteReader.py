@@ -16,7 +16,7 @@ class ByteReader:
             self.position += num_bytes
         else:
             self.position -= num_bytes
-            target = self.position
+            target = self.position + 1
 
         self.bounds_check(target, num_bytes)
 
@@ -37,7 +37,7 @@ class ByteReader:
         self.position = pos
 
     def go_to_end(self):
-        self.position = self.input_size
+        self.position = self.input_size - 1
 
     def go_to_start(self):
         self.position = 0

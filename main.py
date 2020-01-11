@@ -4,9 +4,9 @@ import ByteReader
 import util
 
 
-def encode(input_file, out_path, model, precision, chunk_size):
+def encode(input_file, out_path, model, chunk_size):
     model.open(input_file)
-    encoder = rANSEncoder(out_path + '/ans.lm', precision)
+    encoder = rANSEncoder(out_path + '/ans.lm')
     encoder.open()  # should probably enable <with> syntax for these
     encoding_probabilities = [(0, 0)] * chunk_size
     next_token = model.get_next_sym()  # maybe make iterator?
@@ -14,43 +14,59 @@ def encode(input_file, out_path, model, precision, chunk_size):
     with open(out_path + '/unk.lm', 'wb') as unk_out:
         while next_token:
             tokens_encoded = 0
-            overflow_bytes = 0
             while next_token and tokens_encoded < chunk_size:
                 next_token_encoded = model.encode(next_token)
-                fs, cs, overflow = encoder.get_probs_from_dist(next_token_encoded,
-                                                               model.predict())
+                fs, cs, overflow = encoder.get_probs_from_dist(
+                                            next_token_encoded, model.predict())
                 model.update(next_token_encoded)
 
                 encoding_probabilities.append((fs, cs))
                 if overflow or model.is_unk(next_token_encoded):
-                    next_token_bin = next_token.encode('utf-8')
-                    token_len = len(next_token_bin).to_bytes(1, byteorder='big')
-                    if len(token_len) > 1:
-                        raise ValueError('fk')
-                    unk_out.write(token_len)
-                    unk_out.write(next_token_bin)
-                    overflow_bytes += len(next_token_bin) + 1
+                    util.write_expanding_string(next_token, unk_out, True)
 
                 tokens_encoded += 1
                 next_token = model.get_next_sym()
 
             encoder.write_seq(encoding_probabilities)
             model.reset()
-            util.write_expanding_num(overflow_bytes, unk_out)
         model.close()
         encoder.close()
 
 
 def decode(input_path, out_file, model, precision):
-    decoder = rANSDecoder(out_file)
-    decoder.open()
-    ans_reader = ByteReader(input_path + '/ans.lm', True)
+    ans_reader = ByteReader(input_path + '/ans.lm')
     ans_reader.open()
     ans_reader.go_to_end()
-    unk_reader = ByteReader(input_path + '/unk.lm')
-    unk_reader.open()
+    decoder = rANSDecoder(ans_reader)
+    decoder.open()
 
-    while
+    ans_reader.seek(util.read_expanding_num(ans_reader, False))
+    num_chunks = util.read_expanding_num(ans_reader, True)
+    pos_table_ptr = ans_reader.tell()
+    curr_end = -1
+
+    with open(out_file, 'w') as out, open(input_path + '/unk.lm') as unk_reader:
+        for i in range(num_chunks):
+            ans_reader.set_mode(True)
+            ans_reader.seek(pos_table_ptr)
+            prev_end = curr_end
+            curr_end = util.read_expanding_num(ans_reader)
+            pos_table_ptr = ans_reader.tell()
+            ans_reader.seek(curr_end)
+            ans_reader.set_mode(False)
+
+            while ans_reader.tell() >= prev_end:
+                next_token_encoded = decoder.decode_token(model.predict())
+
+                if next_token_encoded is None or model.is_unk(next_token_encoded):
+                    next_token = util.read_expanding_string(unk_reader, True).decode('utf-8')
+                    if next_token_encoded is None:
+                        next_token_encoded = model.encode(next_token)
+                else:
+                    next_token = model.decode(next_token_encoded)
+
+                model.update(next_token_encoded)
+                out.write(next_token)
 
 
 def main():
