@@ -53,7 +53,8 @@ def decode(input_path, out_file, model, precision):
             curr_end = util.read_expanding_num(ans_reader)
             pos_table_ptr = ans_reader.tell()
             ans_reader.seek(curr_end)
-            ans_reader.set_mode(False)
+
+            rANSDecoder.init_chunk()
 
             while ans_reader.tell() >= prev_end:
                 next_token_encoded = decoder.decode_token(model.predict())

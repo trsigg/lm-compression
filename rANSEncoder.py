@@ -32,13 +32,14 @@ class rANSEncoder:
     def get_probs_from_dist(self, sym, dist):
         cs = 0
         for key in dist:
-            fs = max(1, int(dist[key] * (1 << self.precision)))
             remaining = (1 << self.precision) - cs
-            if remaining == 1:
+            if remaining == 1:  # overflow
                 return 1, cs, True
-            if remaining >= fs:
+
+            fs = max(1, int(dist[key] * (1 << self.precision)))
+            if remaining >= fs:  # truncate
                 fs = remaining - 1
-            if sym == key:
+            if sym == key:  # match
                 return fs, cs, False
             cs += fs
         raise ValueError('symbol not in distribution')
@@ -59,7 +60,7 @@ class rANSEncoder:
                 x >>= self.bits_per_write
 
             # encode
-            x = ((x / fs) << self.precision) + (x % fs) + cs
+            x = ((x // fs) << self.precision) + (x % fs) + cs
 
         self.out.write(x.to_bytes(self.state_bytes, byteorder='big'))
 
