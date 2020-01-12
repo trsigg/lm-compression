@@ -18,7 +18,10 @@ class ByteReader:
             self.position -= num_bytes
             target = self.position + 1
 
-        self.bounds_check(target, num_bytes)
+        try:
+            self.bounds_check(target, num_bytes)
+        except IndexError:
+            return b''
 
         self.input.seek(target)
         return self.input.read(num_bytes)
@@ -57,5 +60,5 @@ class ByteReader:
         self.position = float('nan')
 
     def bounds_check(self, start, length=0):
-        if start < 0 or self.input_size <= start + length:
+        if start < 0 or self.input_size < start + length:
             raise IndexError(f'range {start}-{start+length} out of range')

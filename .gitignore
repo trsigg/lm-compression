@@ -2,3 +2,5 @@
 venv/*
 __pycache__/*
 *.pyc
+test/*
+run_generative_test.py

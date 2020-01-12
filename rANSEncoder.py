@@ -20,7 +20,7 @@ class rANSEncoder:
 
     def close(self):
         # write pos table
-        pos_table_start = self.out.seek() + 1
+        pos_table_start = self.out.tell()
         util.write_expanding_num(len(self.position_table), self.out, True)
         for pos in self.position_table:
             util.write_expanding_num(pos, self.out, True)
@@ -37,19 +37,19 @@ class rANSEncoder:
                 return 1, cs, True
 
             fs = max(1, int(dist[key] * (1 << self.precision)))
-            if remaining >= fs:  # truncate
+            if remaining <= fs:  # truncate
                 fs = remaining - 1
             if sym == key:  # match
                 return fs, cs, False
             cs += fs
-        raise ValueError('symbol not in distribution')
+        return 1, cs, True
 
     def write_seq(self, probabilities, num_symbols):
         if self.out is None:
             raise ValueError('encoder is not in write mode')
 
         x = self.L
-        for i in range(num_symbols):
+        for i in range(num_symbols-1, -1, -1):
             fs, cs = probabilities[i]
 
             # renormalize
@@ -64,4 +64,4 @@ class rANSEncoder:
 
         self.out.write(x.to_bytes(self.state_bytes, byteorder='big'))
 
-        self.position_table.append(self.out.seek())
+        self.position_table.append(self.out.tell() - 1)

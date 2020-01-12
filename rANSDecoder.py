@@ -14,7 +14,7 @@ class rANSDecoder:
 
     def init_chunk(self):
         self.input.set_mode(False)
-        x = int.from_bytes(self.input.read(self.state_bytes), byteorder='big')
+        self.x = int.from_bytes(self.input.read(self.state_bytes), byteorder='big')
 
     def extract_probs_and_symbol(self, dist, residue):
         cs = 0
@@ -24,22 +24,28 @@ class rANSDecoder:
                 return 1, cs, None
 
             fs = max(1, int(dist[key] * self.normalize_fctr))
-            if remaining >= fs:  # truncate
+            if remaining <= fs:  # truncate
                 fs = remaining - 1
             if cs + fs > residue:  # match
                 return fs, cs, key
 
             cs += fs
 
-        raise ValueError('fk')
+        return 1, cs, None
 
-    def decode_token(self, dist):
+    def decode_token(self, dist, end_pos):
         residue = self.x & (self.normalize_fctr - 1)
         fs, cs, symbol = self.extract_probs_and_symbol(dist, residue)
         self.x = fs * (self.x >> self.precision) + residue - cs
 
-        while self.x < self.L:
-            self.x <<= self.bits_per_write
-            self.x += self.input.read(self.bytes_per_read)
+        should_continue = True
 
-        return symbol
+        while self.x < self.L:
+            if self.input.tell() <= end_pos:
+                should_continue = False
+                break
+            self.x <<= self.bits_per_write
+            self.x += int.from_bytes(self.input.read(self.bytes_per_read),
+                                     byteorder='big')
+
+        return symbol, should_continue
