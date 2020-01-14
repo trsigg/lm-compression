@@ -16,17 +16,16 @@ def encode(input_file, out_path, model, chunk_size):
     next_token = model.get_next_sym()  # maybe make iterator?
 
     with open(out_path + '/unk.lm', 'wb') as unk_out:
-        while next_token:
+        while next_token is not None:
             tokens_encoded = 0
-            while next_token and tokens_encoded < chunk_size:
-                next_token_encoded = model.encode(next_token)
-                fs, cs, overflow = encoder.get_probs_from_dist(
-                                            next_token_encoded, model.predict())
-                model.update(next_token_encoded)
+            while next_token is not None and tokens_encoded < chunk_size:
+                fs, cs, overflow = encoder.get_probs_from_dist(next_token,
+                                                               model.predict())
+                model.update(next_token)
 
                 encoding_probabilities[tokens_encoded] = (fs, cs)
-                if overflow or model.is_unk(next_token_encoded):
-                    util.write_expanding_string(next_token, unk_out, True)
+                if overflow or model.is_unk(next_token):
+                    util.write_expanding_string(model.decode(next_token), unk_out, True)
 
                 tokens_encoded += 1
                 next_token = model.get_next_sym()
@@ -60,18 +59,18 @@ def decode(input_path, out_file, model):
             decoder.init_chunk()
 
             while True:
-                next_token_encoded, should_continue = decoder.decode_token(
+                next_token, should_continue = decoder.decode_token(
                     model.predict(), prev_end)
 
                 if not should_continue:
                     break
 
-                if next_token_encoded is None or model.is_unk(next_token_encoded):
-                    next_token = util.read_expanding_string(unk_reader, True)
-                    if next_token_encoded is None:
-                        next_token_encoded = model.encode(next_token)
+                if next_token is None or model.is_unk(next_token):
+                    next_token_decoded = util.read_expanding_string(unk_reader, True)
+                    if next_token is None:
+                        next_token = model.encode(next_token_decoded)
                 else:
-                    next_token = model.decode(next_token_encoded)
+                    next_token_decoded = model.decode(next_token)
 
-                model.update(next_token_encoded)
-                out.write(next_token)
+                model.update(next_token)
+                out.write(next_token_decoded)

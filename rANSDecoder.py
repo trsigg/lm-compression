@@ -18,12 +18,12 @@ class rANSDecoder:
 
     def extract_probs_and_symbol(self, dist, residue):
         cs = 0
-        for key in dist:
+        for key, prob in enumerate(dist):
             remaining = self.normalize_fctr - cs
             if remaining == 1:  # overflow
                 return 1, cs, None
 
-            fs = max(1, int(dist[key] * self.normalize_fctr))
+            fs = max(1, int(prob * self.normalize_fctr))
             if remaining <= fs:  # truncate
                 fs = remaining - 1
             if cs + fs > residue:  # match
@@ -31,7 +31,7 @@ class rANSDecoder:
 
             cs += fs
 
-        return 1, cs, None
+        return self.normalize_fctr - cs, cs, None
 
     def decode_token(self, dist, end_pos):
         residue = self.x & (self.normalize_fctr - 1)

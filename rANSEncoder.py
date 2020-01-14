@@ -31,18 +31,18 @@ class rANSEncoder:
 
     def get_probs_from_dist(self, sym, dist):
         cs = 0
-        for key in dist:
+        for key, prob in enumerate(dist):
             remaining = (1 << self.precision) - cs
             if remaining == 1:  # overflow
                 return 1, cs, True
 
-            fs = max(1, int(dist[key] * (1 << self.precision)))
+            fs = max(1, int(prob * (1 << self.precision)))
             if remaining <= fs:  # truncate
                 fs = remaining - 1
             if sym == key:  # match
                 return fs, cs, False
             cs += fs
-        return 1, cs, True
+        return (1 << self.precision) - cs, cs, True
 
     def write_seq(self, probabilities, num_symbols):
         if self.out is None:
