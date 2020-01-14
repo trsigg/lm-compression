@@ -18,18 +18,22 @@ class GPT2Model(LanguageModel):
         return F.softmax(self.output).tolist()
 
     def update(self, token):
-        self.output, self.past = self.model(torch.tensor([token]),
-                                            past=self.past)
+        if type(token) != list:
+            token = [token]
+
+        for t in token:
+            self.output, self.past = self.model(torch.tensor([t]),
+                                                past=self.past)
         self.output = self.output[0, :]
 
     def get_next_sym(self):
-        return next(self.input)
+        try:
+            return next(self.input)
+        except StopIteration:
+            return None
 
     def encode(self, token):
-        enc = self.tokenizer.encode(token)
-        if len(enc) > 1:
-            raise ValueError('fk')
-        return enc[0]
+        return self.tokenizer.encode(token)
 
     def decode(self, token):
         return self.tokenizer.decode(token, clean_up_tokenization_spaces=False)
@@ -38,7 +42,8 @@ class GPT2Model(LanguageModel):
         return token == self.UNK
 
     def reset(self):
-        self.output, self.past = self.model(torch.tensor([self.UNK]))
+        self.past = None
+        self.update(self.UNK)
 
     def open(self, input_path):
         with open(input_path, 'r') as in_file:
