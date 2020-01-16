@@ -1,5 +1,5 @@
 class rANSDecoder:
-    def __init__(self, input_reader, precision=14, state_bytes=4,
+    def __init__(self, input_reader, precision=20, state_bytes=4,
                  bytes_per_read=1):
         self.input = input_reader
 
@@ -7,7 +7,7 @@ class rANSDecoder:
         self.normalize_fctr = (1 << self.precision)
         self.state_bytes = state_bytes
         self.L = 1 << (8 * (state_bytes - bytes_per_read) - 1)
-        self.bits_per_write = bytes_per_read * 8
+        self.bits_per_read = bytes_per_read * 8
         self.bytes_per_read = bytes_per_read
 
         self.x = None
@@ -44,7 +44,7 @@ class rANSDecoder:
             if self.input.tell() <= end_pos:
                 should_continue = False
                 break
-            self.x <<= self.bits_per_write
+            self.x <<= self.bits_per_read
             self.x += int.from_bytes(self.input.read(self.bytes_per_read),
                                      byteorder='big')
 

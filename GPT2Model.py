@@ -15,7 +15,7 @@ class GPT2Model(LanguageModel):
         self.reset()
 
     def predict(self):
-        return F.softmax(self.output).tolist()
+        return F.softmax(self.output, dim=0).tolist()
 
     def update(self, token):
         if type(token) != list:

@@ -2,7 +2,7 @@ import util
 
 
 class rANSEncoder:
-    def __init__(self, output_path, precision=14, state_bytes=4,
+    def __init__(self, output_path, precision=20, state_bytes=4,
                  bytes_per_write=1):
         self.output_path = output_path
 
