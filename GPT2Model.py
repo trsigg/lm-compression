@@ -12,6 +12,7 @@ class GPT2Model(LanguageModel):
 
         self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         self.model = GPT2LMHeadModel.from_pretrained('gpt2')
+
         self.reset()
 
     def predict(self):
@@ -22,9 +23,9 @@ class GPT2Model(LanguageModel):
             token = [token]
 
         for t in token:
-            self.output, self.past = self.model(torch.tensor([t]),
-                                                past=self.past)
-        self.output = self.output[0, :]
+            self.output = self.model(torch.tensor([t]), past_key_values=self.past)
+            self.past = self.output.past_key_values
+        self.output = self.output.logits[0, :]
 
     def get_next_sym(self):
         try:
