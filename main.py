@@ -67,7 +67,6 @@ def decode(input_path, out_file, model):
             decoder.init_chunk()
             model.reset()
 
-
             while True:
                 next_token, should_continue = decoder.decode_token(
                     model.predict(), prev_end)
@@ -83,6 +82,9 @@ def decode(input_path, out_file, model):
                     next_token_decoded = model.decode(next_token)
 
                 model.update(next_token)
-                out.write(next_token_decoded)
+                try:
+                    out.write(next_token_decoded)
+                except UnicodeEncodeError:
+                    pass
 
     print('decoding finished\n')
